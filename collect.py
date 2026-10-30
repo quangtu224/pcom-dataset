@@ -94,7 +94,9 @@ def fetch(url, body=None, headers=None, use_cache=True):  # use_cache=False forc
             c = json.load(f)
         return c["data"], c["headers"]
     hdr = {"User-Agent": "pcom-dataset-collector", **(headers or {})}
-    for attempt in range(6):
+    if "api.npmjs.org" in url:
+        time.sleep(1)  # npm downloads API rate-limits bursts (HTTP 429)
+    for attempt in range(10):
         req = urllib.request.Request(url, data=body.encode() if body else None, headers=hdr)
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
@@ -109,10 +111,14 @@ def fetch(url, body=None, headers=None, use_cache=True):  # use_cache=False forc
                 print(f"  rate limit reached, waiting {wait:.0f}s")
                 time.sleep(wait)
             elif e.code in (403, 429, 500, 502, 503, 504):
-                time.sleep(int(e.headers.get("retry-after") or 10 * (attempt + 1)))
+                wait = int(e.headers.get("retry-after") or 30 * (attempt + 1))
+                print(f"  HTTP {e.code}, retrying in {wait}s")
+                time.sleep(wait)
             else:
                 raise
         except (urllib.error.URLError, TimeoutError):
+            if attempt >= 2:
+                raise  # host unreachable: fail fast, the caller records a warning
             time.sleep(5 * (attempt + 1))
     else:
         raise RuntimeError(f"giving up on {url}")
