@@ -95,7 +95,7 @@ def fetch(url, body=None, headers=None, use_cache=True):  # use_cache=False forc
         return c["data"], c["headers"]
     hdr = {"User-Agent": "pcom-dataset-collector", **(headers or {})}
     if "api.npmjs.org" in url:
-        time.sleep(1)  # npm downloads API rate-limits bursts (HTTP 429)
+        time.sleep(3)  # npm downloads API rate-limits bursts (HTTP 429)
     for attempt in range(10):
         req = urllib.request.Request(url, data=body.encode() if body else None, headers=hdr)
         try:
@@ -139,27 +139,43 @@ def gh_headers():
 
 
 # ---------------------------------------------------------------- sources
+def advisory_pages():
+    """All reviewed npm advisories from the GitHub Advisory Database (cached page by page)."""
+    url = "https://api.github.com/advisories?ecosystem=npm&type=reviewed&per_page=100"
+    while url:
+        data, h = fetch(url, headers=gh_headers())
+        yield from data
+        m = re.search(r'<([^>]+)>;\s*rel="next"', h.get("link", ""))
+        url = m.group(1) if m else None
+
+
 def load_advisories():
     """{package: [(cve, published_date, range, cvss31_or_None), ...]} for reviewed, non-withdrawn npm CVEs."""
     out = {}
-    url = "https://api.github.com/advisories?ecosystem=npm&type=reviewed&per_page=100"
-    pages = 0
-    while url:
-        data, h = fetch(url, headers=gh_headers())
-        pages += 1
-        for a in data:
-            if a.get("withdrawn_at") or not a.get("cve_id"):
-                continue
-            v3 = (a.get("cvss_severities") or {}).get("cvss_v3") or {}
-            score = v3.get("score") if v3.get("vector_string") else None  # score 0.0 without vector = unscored
-            for vuln in a.get("vulnerabilities") or []:
-                p = vuln.get("package") or {}
-                if p.get("ecosystem") == "npm" and vuln.get("vulnerable_version_range"):
-                    out.setdefault(p["name"], []).append(
-                        (a["cve_id"], iso_date(a["published_at"]), vuln["vulnerable_version_range"], score))
-        m = re.search(r'<([^>]+)>;\s*rel="next"', h.get("link", ""))
-        url = m.group(1) if m else None
-    print(f"advisories: {pages} pages, {sum(map(len, out.values()))} CVE/package entries, {len(out)} packages")
+    for a in advisory_pages():
+        if a.get("withdrawn_at") or not a.get("cve_id"):
+            continue
+        v3 = (a.get("cvss_severities") or {}).get("cvss_v3") or {}
+        score = v3.get("score") if v3.get("vector_string") else None  # score 0.0 without vector = unscored
+        for vuln in a.get("vulnerabilities") or []:
+            p = vuln.get("package") or {}
+            if p.get("ecosystem") == "npm" and vuln.get("vulnerable_version_range"):
+                out.setdefault(p["name"], []).append(
+                    (a["cve_id"], iso_date(a["published_at"]), vuln["vulnerable_version_range"], score))
+    print(f"advisories: {sum(map(len, out.values()))} CVE/package entries, {len(out)} packages")
+    return out
+
+
+def load_ghsa():
+    """{package: {ghsa_id: (published_date, severity)}} for all reviewed, non-withdrawn npm GHSAs (with or without CVE)."""
+    out = {}
+    for a in advisory_pages():
+        if a.get("withdrawn_at"):
+            continue
+        for vuln in a.get("vulnerabilities") or []:
+            p = vuln.get("package") or {}
+            if p.get("ecosystem") == "npm":
+                out.setdefault(p["name"], {})[a["ghsa_id"]] = (iso_date(a["published_at"]), a.get("severity"))
     return out
 
 
@@ -168,8 +184,8 @@ def registry(pkg):
     return data
 
 
-def monthly_downloads(pkg, months):
-    """{month_start: downloads} using range queries of at most one year each."""
+def daily_downloads(pkg, months):
+    """{'YYYY-MM-DD': downloads} for the given months, using range queries of at most one year each."""
     per_day = {}
     start = months[0]
     end = add_months(months[-1], 1)
@@ -180,12 +196,32 @@ def monthly_downloads(pkg, months):
         for d in data.get("downloads", []):
             per_day[d["day"]] = d["downloads"]
         start = stop
+    return per_day
+
+
+def monthly_downloads(pkg, months):
+    """{month_start: downloads}"""
+    per_day = daily_downloads(pkg, months)
     out = {}
     for m in months:
         key = m.isoformat()[:7]
         days = [n for day, n in per_day.items() if day.startswith(key)]
         out[m] = sum(days) if days else None
     return out
+
+
+def graphql(q, full_name):
+    """Run a GraphQL query about one repository, retrying on secondary rate limits; returns data."""
+    for attempt in range(4):
+        data, _ = fetch("https://api.github.com/graphql", body=json.dumps({"query": q}), headers=gh_headers(),
+                        use_cache=attempt == 0)
+        if "RATE_LIMIT" not in str(data.get("errors")).upper():
+            break
+        print("  GitHub secondary rate limit, waiting 60s")
+        time.sleep(60)
+    if data.get("errors") or not (data.get("data") or {}).get("repository"):
+        raise RuntimeError(f"GraphQL error for {full_name}: {str(data.get('errors'))[:200]}")
+    return data["data"]
 
 
 def github_monthly(full_name, month_ends):
@@ -201,16 +237,7 @@ def github_monthly(full_name, month_ends):
             for j, d in enumerate(chunk))
         q = (f'query {{ repository(owner: "{owner}", name: "{name}") {{ createdAt '
              f'defaultBranchRef {{ target {{ ... on Commit {{ {hist} }} }} }} }} {search} }}')
-        for attempt in range(4):
-            data, _ = fetch("https://api.github.com/graphql", body=json.dumps({"query": q}), headers=gh_headers(),
-                            use_cache=attempt == 0)
-            if "RATE_LIMIT" not in str(data.get("errors")).upper():
-                break
-            print("  GitHub secondary rate limit, waiting 60s")
-            time.sleep(60)
-        if data.get("errors") or not (data.get("data") or {}).get("repository"):
-            raise RuntimeError(f"GraphQL error for {full_name}: {str(data.get('errors'))[:200]}")
-        d = data["data"]
+        d = graphql(q, full_name)
         created = iso_date(d["repository"]["createdAt"])
         target = ((d["repository"].get("defaultBranchRef") or {}).get("target")) or {}
         for j, me in enumerate(chunk):

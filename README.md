@@ -3,6 +3,33 @@
 Training data for predicting the **CVSS score of an npm package version one month ahead**.
 Course: PCOM. Author: Quang Tu Dinh.
 
+## Prediction function
+
+```
+python predict.py input.csv output.csv            # expected counts, e.g. 0.2464
+python predict.py input.csv output.csv --integer  # rounded to whole numbers
+```
+
+`input.csv` holds one or more records in the course record schema (`course_schema.py`, header row required;
+missing columns or cells are treated as NULL). `output.csv` holds one row per input row with the five
+`target_ghsa_<severity>_count_90d` columns. Standard library only, no network access, runs in well under a second.
+
+Model (pcom-entry-1): one LightGBM model with a Poisson objective per severity (`models/<severity>.json`,
+trained by `train.py` on `data/training.csv`, features from `features.py`). Severities with too few
+positive training records (critical, unknown) or where the model does not beat the baselines use the
+historical-rate baseline: advisories in the 12 months before the version, scaled to 90 days.
+The models are stored as JSON tree dumps and evaluated in plain Python, so prediction needs no
+third-party package (importing LightGBM alone can exceed the 10-second limit on Windows). `--integer` outputs the median of the
+predicted Poisson distribution, the best whole number under absolute error.
+
+## Training
+
+```
+pip install -r requirements.txt
+python build_training.py   # data/training.csv in the course record schema (needs GITHUB_TOKEN for issue/PR fields)
+python train.py            # time-based evaluation vs. baselines, then saves models/ and models/report.json
+```
+
 ## Contents
 
 | File | Purpose |
@@ -10,7 +37,13 @@ Course: PCOM. Author: Quang Tu Dinh.
 | `schema.sql` | Record schema (Homework 2), SQLite |
 | `collect.py` | Collector: downloads public data and builds `data/pcom.db` (Python standard library only) |
 | `packages_popular.txt` | Hand-picked popular npm packages (extend freely) |
-| `test_collect.py` | Offline checks of date, version-range and repository parsing logic |
+| `build_training.py` | Builds `data/training.csv` in the course record schema (training data for the model) |
+| `course_schema.py` | Column names of the course record schema |
+| `predict.py` | Prediction function |
+| `features.py` | Feature engineering shared by training and prediction |
+| `train.py` | Trains and evaluates the LightGBM models |
+| `models/` | Trained models and evaluation report |
+| `data/training.csv` | Training data in the course record schema |
 | `data/pcom.db` | The training dataset (SQLite) |
 | `data/warnings.txt` | Data that could not be collected in the last run |
 
@@ -50,9 +83,9 @@ affected range contains the version; `max_cvss` = highest CVSS v3.x base score a
 
 ```
 set GITHUB_TOKEN=<GitHub token, read-only public access is enough>     (Windows; use export on Linux/macOS)
-python test_collect.py
 python collect.py              # all packages
 python collect.py --limit 5    # quick test
+python build_training.py       # course-schema training data -> data/training.csv
 ```
 
 Raw API responses are cached in `cache/` (not committed). Delete `cache/` to fetch fresh data, e.g. each

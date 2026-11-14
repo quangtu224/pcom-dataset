@@ -1,0 +1,51 @@
+{
+  "split": "2025-11-01",
+  "records": 1119,
+  "severities": {
+    "low": {
+      "lightgbm": {
+        "mae": 0.092,
+        "poisson_deviance": 0.4694
+      },
+      "baseline": {
+        "mae": 0.1016,
+        "poisson_deviance": 1.5506
+      },
+      "zero": {
+        "mae": 0.0809,
+        "poisson_deviance": 2.1684
+      },
+      "used": "lightgbm"
+    },
+    "moderate": {
+      "lightgbm": {
+        "mae": 0.4355,
+        "poisson_deviance": 2.4911
+      },
+      "baseline": {
+        "mae": 0.4154,
+        "poisson_deviance": 5.5739
+      },
+      "zero": {
+        "mae": 0.4162,
+        "poisson_deviance": 11.6659
+      },
+      "used": "lightgbm"
+    },
+    "high": {
+      "lightgbm": {
+        "mae": 0.4226,
+        "poisson_deviance": 2.5579
+      },
+      "baseline": {
+        "mae": 0.4089,
+        "poisson_deviance": 7.3857
+      },
+      "zero": {
+        "mae": 0.4075,
+        "poisson_deviance": 11.231
+      },
+      "used": "lightgbm"
+    }
+  }
+}
