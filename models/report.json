@@ -4,12 +4,12 @@
   "severities": {
     "low": {
       "lightgbm": {
-        "mae": 0.092,
-        "poisson_deviance": 0.4694
+        "mae": 0.1055,
+        "poisson_deviance": 0.4211
       },
       "baseline": {
-        "mae": 0.1016,
-        "poisson_deviance": 1.5506
+        "mae": 0.1046,
+        "poisson_deviance": 1.5567
       },
       "zero": {
         "mae": 0.0809,
@@ -19,12 +19,12 @@
     },
     "moderate": {
       "lightgbm": {
-        "mae": 0.4355,
-        "poisson_deviance": 2.4911
+        "mae": 0.447,
+        "poisson_deviance": 2.1721
       },
       "baseline": {
-        "mae": 0.4154,
-        "poisson_deviance": 5.5739
+        "mae": 0.4203,
+        "poisson_deviance": 3.7643
       },
       "zero": {
         "mae": 0.4162,
@@ -34,12 +34,12 @@
     },
     "high": {
       "lightgbm": {
-        "mae": 0.4226,
-        "poisson_deviance": 2.5579
+        "mae": 0.4379,
+        "poisson_deviance": 2.1822
       },
       "baseline": {
-        "mae": 0.4089,
-        "poisson_deviance": 7.3857
+        "mae": 0.4155,
+        "poisson_deviance": 4.6265
       },
       "zero": {
         "mae": 0.4075,

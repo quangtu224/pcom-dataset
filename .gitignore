@@ -3,3 +3,6 @@ __pycache__/
 # local test files and samples are not part of the submission
 test_*.py
 sample_*.csv
+# prediction-round files from class
+input.csv
+output.csv

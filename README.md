@@ -17,10 +17,27 @@ missing columns or cells are treated as NULL). `output.csv` holds one row per in
 Model (pcom-entry-1): one LightGBM model with a Poisson objective per severity (`models/<severity>.json`,
 trained by `train.py` on `data/training.csv`, features from `features.py`). Severities with too few
 positive training records (critical, unknown) or where the model does not beat the baselines use the
-historical-rate baseline: advisories in the 12 months before the version, scaled to 90 days.
+historical-rate baseline: advisories in the 12 months before the version, scaled to 90 days
+(the lifetime rate when there were none in the last 12 months). Since round 1 the models are strongly
+regularised (at least 50 records per leaf, 150 trees, L2 = 10) to avoid over-extrapolating bursts of advisories.
 The models are stored as JSON tree dumps and evaluated in plain Python, so prediction needs no
 third-party package (importing LightGBM alone can exceed the 10-second limit on Windows). `--integer` outputs the median of the
 predicted Poisson distribution, the best whole number under absolute error.
+
+## Competition service (from pcom-entry-2)
+
+`main.py` serves the automated competition rounds (template: riehlegroup/pcom-course-setup):
+
+* `GET /health` -> `{"health": "up"}`
+* `POST /predict` with `{"testdata_download_endpoint": ..., "prediction_upload_endpoint": ...}`: downloads the
+  input CSV (several rows = versions of one package), predicts for the latest version with `predict.py`, and
+  uploads a one-row CSV with the five target columns.
+
+```
+docker build -t pcom-api .
+docker run -d --name pcom-api --restart unless-stopped -p 8000:8000 pcom-api
+curl http://localhost:8000/health
+```
 
 ## Training
 
@@ -40,6 +57,7 @@ python train.py            # time-based evaluation vs. baselines, then saves mod
 | `build_training.py` | Builds `data/training.csv` in the course record schema (training data for the model) |
 | `course_schema.py` | Column names of the course record schema |
 | `predict.py` | Prediction function |
+| `main.py`, `Dockerfile` | Web service for the automated competition rounds |
 | `features.py` | Feature engineering shared by training and prediction |
 | `train.py` | Trains and evaluates the LightGBM models |
 | `models/` | Trained models and evaluation report |

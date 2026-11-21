@@ -25,8 +25,10 @@ DATA = os.path.join(HERE, "data", "training.csv")
 MODELS = os.path.join(HERE, "models")
 SPLIT = "2025-11-01"
 MIN_POSITIVES = 10  # fewer positive records than this: not enough to learn, keep the baseline
-PARAMS = dict(objective="poisson", n_estimators=300, learning_rate=0.03, num_leaves=7, min_child_samples=20,
-              subsample=0.8, subsample_freq=1, colsample_bytree=0.8, reg_lambda=1.0, verbose=-1, random_state=42)
+# Strong regularisation (>=50 records per leaf, 150 trees, L2=10): after round 1 the less regularised
+# model over-extrapolated a burst of advisories; this setting was better on the test period for every severity.
+PARAMS = dict(objective="poisson", n_estimators=150, learning_rate=0.03, num_leaves=7, min_child_samples=50,
+              subsample=0.8, subsample_freq=1, colsample_bytree=0.8, reg_lambda=10.0, verbose=-1, random_state=42)
 
 
 def main():

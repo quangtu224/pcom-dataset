@@ -10,7 +10,7 @@ output.csv : one row per input row with the five target_ghsa_*_count_90d columns
 Model per severity: the LightGBM Poisson model in models/<severity>.json if train.py saved one
 (evaluated here in plain Python, no LightGBM import needed),
 otherwise the historical-rate baseline = advisories in the last 12 months (ghsa_<sev>_count_M0..M11)
-scaled to 90 days, falling back to the lifetime rate. If a model file is unreadable or a row
+scaled to 90 days, falling back to the lifetime rate when that is zero. If a model file is unreadable or a row
 cannot be processed, the baseline (or 0) is used, so a prediction is always produced.
 """
 import csv, json, math, os, sys
@@ -43,8 +43,9 @@ def days_between(row, start_col, end_col):
 def baseline(row, sev):
     monthly = [num(row, f"ghsa_{sev}_count_M{m}") for m in MONTHS]
     seen = [x for x in monthly if x is not None]
-    if seen:
+    if seen and sum(seen) > 0:
         return sum(seen) * WINDOW_DAYS / (30.4375 * len(seen))  # rate over the observed months
+    # none in the last 12 months (or no monthly data): use the lifetime rate instead of predicting exactly 0
     total, age = num(row, f"ghsa_{sev}_count"), days_between(row, "package_created_at", "published_at")
     if total is not None and age and age > 0:
         return total * WINDOW_DAYS / max(age, 365)  # shortcut: young packages treated as 1 year old to avoid huge rates
