@@ -6,3 +6,5 @@ sample_*.csv
 # prediction-round files from class
 input.csv
 output.csv
+# private keys must never be committed
+*.pem
