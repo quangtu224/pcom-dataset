@@ -119,9 +119,9 @@ def package_records(pkg, ghsa, today, warnings):
     if not anchors:
         return []
 
-    try:  # same month range as collect.py, so cached download data is reused
+    try:  # same start month as collect.py (cached yearly chunks are reused), up to the last full month
         daily = c.daily_downloads(pkg, c.month_starts(c.add_months(c.FIRST_CUTOFF, -c.HISTORY),
-                                                      c.add_months(c.LAST_CUTOFF, -1)))
+                                                      c.add_months(date(today.year, today.month, 1), -1)))
     except Exception as e:
         warnings.append(f"{pkg}: downloads unavailable ({e})")
         daily = {}

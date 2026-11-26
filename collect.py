@@ -9,7 +9,7 @@ so a re-run is fast and repeatable; delete cache/ to fetch fresh data.
 """
 import argparse, hashlib, json, os, random, re, sqlite3, sys, time
 import urllib.error, urllib.parse, urllib.request
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(HERE, "data", "pcom.db")
@@ -129,6 +129,28 @@ def fetch(url, body=None, headers=None, use_cache=True):  # use_cache=False forc
         json.dump({"url": url, "fetched_at": datetime.now(timezone.utc).isoformat(), "data": data,
                    "headers": {k: rh[k] for k in ("link",) if k in rh}}, f)
     return data, rh
+
+
+def prune_cache():
+    """Delete cached responses that can change (advisories, registry, GitHub, recent downloads);
+    keep download ranges that ended more than two days ago, since those never change."""
+    stable_before = (datetime.now(timezone.utc).date() - timedelta(days=2)).isoformat()
+    kept = removed = 0
+    for root, _, files in os.walk(CACHE):
+        for name in files:
+            path = os.path.join(root, name)
+            try:
+                with open(path, encoding="utf-8") as f:
+                    url = json.load(f).get("url", "")
+            except (OSError, ValueError):
+                url = ""
+            m = re.search(r"/downloads/range/[\d-]+:([\d-]+)/", url)
+            if m and m.group(1) < stable_before:
+                kept += 1
+            else:
+                os.remove(path)
+                removed += 1
+    print(f"cache: removed {removed} changeable responses, kept {kept} past download ranges")
 
 
 def gh_headers():

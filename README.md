@@ -43,6 +43,7 @@ curl http://localhost:8000/health
 
 ```
 pip install -r requirements.txt
+python -c "import collect; collect.prune_cache()"   # drop cached data that may have changed (new versions, advisories)
 python build_training.py   # data/training.csv in the course record schema (needs GITHUB_TOKEN for issue/PR fields)
 python train.py            # time-based evaluation vs. baselines, then saves models/ and models/report.json
 ```
@@ -62,8 +63,7 @@ python train.py            # time-based evaluation vs. baselines, then saves mod
 | `train.py` | Trains and evaluates the LightGBM models |
 | `models/` | Trained models and evaluation report |
 | `data/training.csv` | Training data in the course record schema |
-| `data/pcom.db` | The training dataset (SQLite) |
-| `data/warnings.txt` | Data that could not be collected in the last run |
+| `data/pcom.db` | Homework 3 dataset (SQLite); built locally by `collect.py`, committed only under tag `initial-training-data` |
 
 ## Records
 

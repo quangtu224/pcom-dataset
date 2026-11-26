@@ -1,49 +1,64 @@
 {
   "split": "2025-11-01",
-  "records": 1119,
+  "records": 1152,
   "severities": {
     "low": {
       "lightgbm": {
-        "mae": 0.1055,
-        "poisson_deviance": 0.4211
+        "mae": 0.1157,
+        "poisson_deviance": 0.508
       },
       "baseline": {
-        "mae": 0.1046,
-        "poisson_deviance": 1.5567
+        "mae": 0.1082,
+        "poisson_deviance": 1.75
       },
       "zero": {
-        "mae": 0.0809,
-        "poisson_deviance": 2.1684
+        "mae": 0.0881,
+        "poisson_deviance": 2.3577
       },
       "used": "lightgbm"
     },
     "moderate": {
       "lightgbm": {
-        "mae": 0.447,
-        "poisson_deviance": 2.1721
+        "mae": 0.4887,
+        "poisson_deviance": 2.4157
       },
       "baseline": {
-        "mae": 0.4203,
-        "poisson_deviance": 3.7643
+        "mae": 0.44,
+        "poisson_deviance": 3.5611
       },
       "zero": {
-        "mae": 0.4162,
-        "poisson_deviance": 11.6659
+        "mae": 0.4517,
+        "poisson_deviance": 12.7335
       },
       "used": "lightgbm"
     },
     "high": {
       "lightgbm": {
-        "mae": 0.4379,
-        "poisson_deviance": 2.1822
+        "mae": 0.4765,
+        "poisson_deviance": 2.7627
       },
       "baseline": {
-        "mae": 0.4155,
-        "poisson_deviance": 4.6265
+        "mae": 0.4595,
+        "poisson_deviance": 5.1096
       },
       "zero": {
-        "mae": 0.4075,
-        "poisson_deviance": 11.231
+        "mae": 0.4489,
+        "poisson_deviance": 12.4933
+      },
+      "used": "lightgbm"
+    },
+    "critical": {
+      "lightgbm": {
+        "mae": 0.1014,
+        "poisson_deviance": 0.8004
+      },
+      "baseline": {
+        "mae": 0.1211,
+        "poisson_deviance": 2.0133
+      },
+      "zero": {
+        "mae": 0.0909,
+        "poisson_deviance": 2.4661
       },
       "used": "lightgbm"
     }

@@ -8,3 +8,6 @@ input.csv
 output.csv
 # private keys must never be committed
 *.pem
+# generated locally (Homework 3 version is kept under tag initial-training-data)
+data/pcom.db
+data/*warnings.txt
